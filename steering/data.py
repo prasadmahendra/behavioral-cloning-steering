@@ -201,27 +201,31 @@ class TrainData(Data):
             image = self.__adj_brightness_at_rand(image)
 
             # skew for training recovery ...
-            image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle)
+            image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle, both_axis=True)
 
         return camera, np.array(image), steering_angle
 
     def __x_y_skew_at_rand(self, image, steering_angle, both_axis=False):
-        x_range = image.shape[1] / 3
-        y_range = image.shape[0] / 3
-        angle_multiplier = 0.5
+        adj = np.random.randint(2)
+        if adj == 1:
+            x_range = image.shape[1] / 3
+            y_range = image.shape[0] / 5
+            angle_multiplier = 1.0
 
-        x_tran = x_range * np.random.uniform() - (x_range / 2)  # + or -
-        new_steering_angle = steering_angle + (x_tran / x_range) * angle_multiplier
+            x_tran = x_range * np.random.uniform() - (x_range / 2)  # + or -
+            new_steering_angle = steering_angle + (x_tran / x_range) * angle_multiplier
 
-        y_tran = 0
-        if both_axis:
-            y_tran = y_range * np.random.uniform() - (y_range / 2)  # + or -
+            y_tran = 0
+            if both_axis:
+                y_tran = y_range * np.random.uniform() - (y_range / 2)  # + or -
 
-        translation_mat = np.float32([[1, 0, x_tran], [0, 1, y_tran]])
-        new_image = cv2.warpAffine(image, translation_mat, (image.shape[1], image.shape[0]))
+            translation_mat = np.float32([[1, 0, x_tran], [0, 1, y_tran]])
+            new_image = cv2.warpAffine(image, translation_mat, (image.shape[1], image.shape[0]))
 
-        logging.debug("x tran: %s y tran: %s steering adj: %s -> %s" % (x_tran, y_tran, steering_angle, new_steering_angle))
-        return new_image, new_steering_angle
+            logging.debug("x tran: %s y tran: %s steering adj: %s -> %s" % (x_tran, y_tran, steering_angle, new_steering_angle))
+            return new_image, new_steering_angle
+        else:
+            return image, steering_angle
 
     def __adj_brightness_at_rand(self, image):
         adj = np.random.randint(2)
@@ -269,11 +273,18 @@ class TrainData(Data):
 
     def fit_generator(self):
         curr_iter_idx_start = 0
-        curr_iter_idx_end = self.TRAIN_BATCH_SIZE - 1
-        idx_max = len(self.__csv_train_data) - 1
+        curr_iter_idx_end = self.TRAIN_BATCH_SIZE
 
-        if curr_iter_idx_end > idx_max:
+        data_set_to_use = self.__csv_train_data
+        generate_new_images = True
+        select_camera_at_random = True
+
+        idx_max = len(data_set_to_use) - 1
+
+        if curr_iter_idx_end >= idx_max:
             curr_iter_idx_end = idx_max
+
+        selected_tot = 0
 
         while 1:
             logging.debug("train batch %s-%s (tot: %s)" % (curr_iter_idx_start, curr_iter_idx_end, len(self.__csv_train_data)))
@@ -281,13 +292,13 @@ class TrainData(Data):
             y = []
 
             curr_iter_idx = curr_iter_idx_start
+            for idx in range(curr_iter_idx_end - curr_iter_idx_start):
+                line = data_set_to_use[curr_iter_idx]
 
-            for idx in range(self.TRAIN_BATCH_SIZE):
-                line = self.__csv_train_data[curr_iter_idx]
-
-                camera, image, steering_angle = self.__select_image_for_training(line, generate_new_images=True, select_camera_at_random=True)
+                camera, image, steering_angle = self.__select_image_for_training(line, generate_new_images=generate_new_images, select_camera_at_random=select_camera_at_random)
                 X.append(image)
                 y.append(steering_angle)
+                selected_tot += 1
 
                 curr_iter_idx += 1
                 if curr_iter_idx >  curr_iter_idx_end:
@@ -296,14 +307,14 @@ class TrainData(Data):
             curr_iter_idx_start = curr_iter_idx_start + self.TRAIN_BATCH_SIZE
             curr_iter_idx_end = curr_iter_idx_end + self.TRAIN_BATCH_SIZE
 
-            if curr_iter_idx_start > idx_max:
+            if curr_iter_idx_start >= idx_max:
                 curr_iter_idx_start = 0
-                curr_iter_idx_end = self.TRAIN_BATCH_SIZE - 1
+                curr_iter_idx_end = self.TRAIN_BATCH_SIZE
 
-            if curr_iter_idx_end > idx_max:
-                curr_iter_idx_end = idx_max
+            if curr_iter_idx_end >= idx_max:
+                curr_iter_idx_end = idx_max + 1
 
-            logging.debug("\t next: %s-%s (tot: %s)" % (curr_iter_idx_start, curr_iter_idx_end, len(self.__csv_train_data)))
+            logging.debug("\t next: %s-%s (tot: %s), selected_tot: %s" % (curr_iter_idx_start, curr_iter_idx_end, len(data_set_to_use), selected_tot))
 
             yield np.array(X), np.array(y)
 

@@ -10,6 +10,7 @@ from keras.optimizers import Adam
 from steering.data import Data
 from keras import backend as K
 import numpy as np
+import multiprocessing
 
 class Model:
     __logger = logging.getLogger(__name__)
@@ -71,10 +72,12 @@ class Model:
     def fit_generator(self, training_data, init_learning_rate, nb_epoch, checkpoint):
         logging.info("Get validtion data ...")
         valid_images, valid_angles = training_data.valid_data()
-        logging.info("Set fit generator ...")
+
+        workers = multiprocessing.cpu_count()
+        logging.info("Set fit generator. workers = %s ..." % (workers))
 
         self.__model.compile(loss="mse", optimizer=Adam(lr=init_learning_rate), metrics=['accuracy'])
-        self.__model.fit_generator(training_data.fit_generator(), validation_data=(valid_images, valid_angles), samples_per_epoch=len(training_data.train_data()) * 4, nb_epoch=nb_epoch, verbose=1, callbacks=[checkpoint])
+        self.__model.fit_generator(training_data.fit_generator(), validation_data=(valid_images, valid_angles), samples_per_epoch=len(training_data.train_data()) * 1, nb_worker=workers, nb_epoch=nb_epoch, verbose=1, callbacks=[checkpoint], pickle_safe=True)
 
     def __create_model(self, input_img_shape, dropout_prob):
         """This mode is based on NVIDIAs research paper - End to End Learning for Self-Driving Cars

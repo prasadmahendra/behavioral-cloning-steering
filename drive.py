@@ -11,6 +11,8 @@ from PIL import Image
 from PIL import ImageOps
 from flask import Flask, render_template
 from io import BytesIO
+from steering.data import Data
+from steering.nn.model import Model
 
 from keras.models import model_from_json
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array
@@ -37,9 +39,9 @@ def telemetry(sid, data):
     imgString = data["image"]
     image = Image.open(BytesIO(base64.b64decode(imgString)))
     image_array = np.asarray(image)
-    transformed_image_array = image_array[None, :, :, :]
+
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
-    steering_angle = float(model.predict(transformed_image_array, batch_size=1))
+    steering_angle = model.predict(image_array)
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
     throttle = 0.2
     print(steering_angle, throttle)
@@ -61,15 +63,17 @@ def send_control(steering_angle, throttle):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Remote Driving')
-    parser.add_argument('model', type=str,
-    help='Path to model definition json. Model weights should be on the same path.')
+    parser.add_argument('model', type=str, help='Path to model definition json. Model weights should be on the same path.')
     args = parser.parse_args()
-    with open(args.model, 'r') as jfile:
-        model = model_from_json(jfile.read())
 
-    model.compile("adam", "mse")
+    #with open(args.model, 'r') as jfile:
+    #    model = model_from_json(jfile.read())
+    #
+    #model.compile("adam", "mse")
+    model = Model.for_predicting()
+
     weights_file = args.model.replace('json', 'h5')
-    model.load_weights(weights_file)
+    model.restore(weights_file)
 
     # wrap Flask application with engineio's middleware
     app = socketio.Middleware(sio, app)

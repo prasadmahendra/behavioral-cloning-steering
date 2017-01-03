@@ -4,10 +4,12 @@ import json
 import tensorflow as tf
 from keras.models import Sequential
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Dense, Dropout, Flatten, ELU
-from keras.layers.convolutional import Convolution2D
-from steering.data import Data, TrainData
-
+from keras.layers import Dense, Dropout, Flatten, ELU, Activation
+from keras.layers.convolutional import Convolution2D, Conv2D
+from keras.optimizers import Adam
+from steering.data import Data
+from keras import backend as K
+import numpy as np
 
 class Model:
     __logger = logging.getLogger(__name__)
@@ -16,28 +18,45 @@ class Model:
         self.debug = False
         self.__model = self.__create_model(input_img_shape=input_img_shape, dropout_prob=dropout_prob)
 
-    def test(data_path, input_img_shape=Data.NN_INPUT_IMAGE_SHAPE, dropout_prob=0.5):
-        m = Model.for_training(training_data=TrainData(data_path), input_img_shape=input_img_shape, dropout_prob=dropout_prob)
+    def test(data_path):
+        m = Model.for_training()
+        m.restore("./saved/model.h5")
 
-    def for_training(training_data, input_img_shape=Data.NN_INPUT_IMAGE_SHAPE, dropout_prob=0.5, checkpoint_path="./checkpoint"):
+    def for_training(input_img_shape=Data.INPUT_IMAGE_SHAPE, dropout_prob=0.5):
+        return Model(input_img_shape, dropout_prob)
+
+    def for_predicting(input_img_shape=Data.INPUT_IMAGE_SHAPE):
+        m = Model(input_img_shape, dropout_prob=0.0)
+        m.__model.compile("adam", "mse")
+        return m
+
+    def predict(self, image):
+        image = Data.image_pre_process(image)
+        image = np.expand_dims(image, axis=0)
+        return self.__model.predict(image, batch_size=1, verbose=0)[0][0]
+
+    def train(self, training_data, init_learning_rate, nb_epoch, checkpoint_path="./checkpoint"):
         if not os.path.exists(checkpoint_path):
             os.makedirs(checkpoint_path)
 
-        m = Model(input_img_shape, dropout_prob)
-
         checkpoint_path = "%s/weights.{epoch:02d}-{val_loss:.2f}.hdf5" % (checkpoint_path)
-        checkpoint = ModelCheckpoint(checkpoint_path, verbose=1, save_best_only=False, save_weights_only=False, mode='auto')
-        m.set_fit_generator(training_data, checkpoint)
+        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, save_best_only=False, save_weights_only=False, monitor='val_loss', mode='auto')
+        self.fit_generator(training_data, init_learning_rate, nb_epoch, checkpoint)
 
-        return m
+    def restore(self, saved_model_path):
+        """loads model weights from the given file path"""
 
-    def for_predicting(self, saved_model_path, input_img_shape=Data.NN_INPUT_IMAGE_SHAPE):
-        m = Model(input_img_shape, dropout_prob=0.0)
-        m.__model.load_weights(saved_model_path)
-        m.__model.compile(loss='mse', optimizer='Adam')
-        return m
+        if not os.path.exists(saved_model_path):
+            logging.warning("saved weights (%s) not found" % (saved_model_path))
+        else:
+            logging.info("Loading %s" % (saved_model_path))
+            self.__model.load_weights(saved_model_path)
+            logging.info("[Done] Loading %s" % (saved_model_path))
 
     def save(self, saveto_model_path):
+        """saves the model as json and its trained weights (h5) to disk"""
+
+        logging.info("saving mode & weights to %s" % (saveto_model_path))
         if not os.path.exists(saveto_model_path):
             os.makedirs(saveto_model_path)
 
@@ -47,19 +66,22 @@ class Model:
 
         # The model weights.
         self.__model.save_weights(filepath="%s/model.h5" % (saveto_model_path), overwrite=True)
+        logging.info("[Done] saving mode & weights to %s" % (saveto_model_path))
 
-    def set_fit_generator(self, training_data, checkpoint):
-        logging.info("Set fit generator")
-        # TODO
-        # self.__model.fit_generator()
-        pass
+    def fit_generator(self, training_data, init_learning_rate, nb_epoch, checkpoint):
+        logging.info("Get validtion data ...")
+        valid_images, valid_angles = training_data.valid_data()
+        logging.info("Set fit generator ...")
+
+        self.__model.compile(loss="mse", optimizer=Adam(lr=init_learning_rate), metrics=['accuracy'])
+        self.__model.fit_generator(training_data.fit_generator(), validation_data=(valid_images, valid_angles), samples_per_epoch=len(training_data.train_data()) * 4, nb_epoch=nb_epoch, verbose=1, callbacks=[checkpoint])
 
     def __create_model(self, input_img_shape, dropout_prob):
         """This mode is based on NVIDIAs research paper - End to End Learning for Self-Driving Cars
            http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf"""
 
         model = Sequential()
-        model.add(Convolution2D(3, 1, 1, init=self.__layer_init, subsample=(1, 1), border_mode='same', name='conv0_1x1', input_shape=(66, 200, 3)))
+        model.add(Convolution2D(3, 1, 1, init=self.__layer_init, subsample=(1, 1), border_mode='same', name='conv0_1x1', input_shape=Data.INPUT_IMAGE_SHAPE))
         model.add(ELU())
         model.add(Convolution2D(24, 5, 5, init=self.__layer_init, subsample=(2, 2), border_mode='same', name='conv1_2x2'))
         model.add(ELU())
@@ -84,12 +106,14 @@ class Model:
         model.add(Dense(10, init=self.__layer_init, name="dense3_10"))
         model.add(ELU())
         model.add(Dense(1, init=self.__layer_init, name="dense4_1"))
+        model.add(Activation('linear'))
 
-        model.compile(optimizer="adam", loss="mse")
-        logging.info("Model created")
+        logging.info("Model created (dropout_prob: %s)" % (dropout_prob))
+        assert (model.get_layer(name="conv0_1x1").input_shape == (None, Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH, Data.INPUT_IMAGE_COLCHAN)), "The input shape is: %s" % str(model.get_layer(name="hidden1").input_shape)
+        assert (model.get_layer(name="dense4_1").output_shape == (None, 1)), "The input shape is: %s" % str(model.get_layer(name="hidden1").input_shape)
 
         return model
 
     def __layer_init(self, shape, name):
         logging.debug("Init model layer %s" % (name))
-        return tf.truncated_normal(shape, stddev=1e-2)
+        return K.variable(tf.truncated_normal(shape, stddev=1e-2, dtype="float32"))

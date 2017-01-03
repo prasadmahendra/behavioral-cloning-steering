@@ -4,47 +4,59 @@ import logging
 import cv2
 import numpy as np
 import math
-
+import random
+from keras.preprocessing.image import load_img, img_to_array
+from keras.applications import imagenet_utils
 
 class Data():
-    INPUT_IMAGE_WIDTH = 64
-    INPUT_IMAGE_HEIGHT = 64
-    NN_INPUT_IMAGE_SHAPE = (INPUT_IMAGE_WIDTH, INPUT_IMAGE_HEIGHT, 3)
+    INPUT_IMAGE_WIDTH = 80
+    INPUT_IMAGE_HEIGHT = 40
+    INPUT_IMAGE_COLCHAN = 3
+    INPUT_IMAGE_SHAPE = (INPUT_IMAGE_HEIGHT, INPUT_IMAGE_WIDTH, INPUT_IMAGE_COLCHAN)
+
+    LEFT_CAMERA_IMAGE_IDX = 1
+    CENTER_CAMERA_IMAGE_IDX = 0
+    RIGHT_CAMERA_IMAGE_IDX = 2
+    STEERING_ANGLE_IDX = 3
+    IMAGE_PATH_PREFIX = "data/"
+    CAMERA_POS = ["center", "left", "right"]
+    CAMERA_TO_STEERING_ANGLE_ADJ = [0, 0.25, -0.25]
 
     def __init__(self):
         self.debug = False
 
-    def pre_process(self, image):
+    def image_pre_process(image):
         """Pre-processes images before they are fed in to the either the prediction or training model networks"""
 
-        image_out = self.__region_of_interest(image)
+        image_out = Data.__region_of_interest(image)
 
-        image_out = self.__pixel_mean_subtraction(image_out)
+        image_out = Data.__pixel_normalize(image_out)
 
-        image_out = self.__pixel_normalize(image_out)
+        image_out = Data.__pixel_mean_subtraction(image_out)
 
-        image_out = self.__resize_image(image_out, self.INPUT_IMAGE_WIDTH, self.INPUT_IMAGE_HEIGHT)
-
-        if self.debug:
-            self.display_image("Input image", image)
-            self.display_image("Pre-processed image", image_out)
+        image_out = Data.__resize_image(image_out, Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH)
 
         return image_out
 
-    def __resize_image(self, image, width, height):
+    def load_image_from_file(file_path):
+        image = np.asarray(load_img(file_path, target_size=(Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH)), dtype=np.uint8)
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
+        return np.asarray(image, dtype=np.uint8)
+
+    def __resize_image(image, height, width):
         return cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
 
-    def __region_of_interest(self, image):
+    def __region_of_interest(image):
         """Only keeps the region of the image defined by the polygon formed from `vertices`. The rest of the image is set to black."""
 
         bottom_left_x = 0
-        bottom_left_y = image.shape[0] - self.__engine_compartment_pixels()
+        bottom_left_y = image.shape[0] - Data.__engine_compartment_pixels()
         top_left_x = 0
-        top_left_y = image.shape[0] / 4
+        top_left_y = image.shape[0] / 3
         top_right_x = image.shape[1]
         top_right_y = top_left_y
         bottom_right_x = image.shape[1]
-        bottom_right_y = image.shape[0] - self.__engine_compartment_pixels()
+        bottom_right_y = image.shape[0] - Data.__engine_compartment_pixels()
 
 
         mask_vertices = np.array([[(bottom_left_x, bottom_left_y),
@@ -69,21 +81,19 @@ class Data():
         masked_image = cv2.bitwise_and(image, mask)
         return masked_image
 
+    def __pixel_normalize(image):
+        image = cv2.normalize(image, image, alpha=0.0, beta=1.0, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        #assert (math.isclose(np.min(image), 0.0, abs_tol=0.0001) and math.isclose(np.max(image), 1.0, abs_tol=0.0001)), "__normalize failed. The range of the input data is: %.10f to %.10f" % (np.min(image), np.max(image))
         return image
 
-    def __pixel_normalize(self, image):
-        image = cv2.normalize(image, image, alpha=0.1, beta=0.9, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-        assert (math.isclose(np.min(image), 0.1, abs_tol=0.0001) and math.isclose(np.max(image), 0.9, abs_tol=0.0001)), "__normalize failed. The range of the input data is: %.10f to %.10f" % (np.min(image), np.max(image))
+    def __pixel_mean_subtraction(image):
+        image = image.astype(dtype='float32')
+        image -= np.mean(image, dtype='float32', axis=0)
+        #assert (round(np.mean(image)) == 0), "__mean_subtraction error. The mean of the input data is: %f" % np.mean(image)
         return image
 
-    def __pixel_mean_subtraction(self, image):
-        image = image.astype(dtype='float64')
-        image -= np.mean(image, dtype='float64', axis=0)
-        assert (round(np.mean(image)) == 0), "__mean_subtraction error. The mean of the input data is: %f" % np.mean(image)
-        return image
-
-    def __engine_compartment_pixels(self):
-        return 20
+    def __engine_compartment_pixels():
+        return 25
 
     def __hough_lines(self, img, rho, theta, threshold, min_line_len, max_line_gap, y_min, line_fit=False):
         """
@@ -108,20 +118,13 @@ class Data():
     def __weighted_img(self, img, initial_img, α=0.8, β=1., λ=0.):
         return cv2.addWeighted(initial_img, α, img, β, λ)
 
-    def display_image(self, title, image):
+    def display_image(title, image):
         cv2.imshow(title, image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-
 class TrainData(Data):
-    LEFT_CAMERA_IMAGE_IDX = 1
-    CENTER_CAMERA_IMAGE_IDX = 0
-    RIGHT_CAMERA_IMAGE_IDX = 2
-    STEERING_ANGLE_IDX = 3
-    IMAGE_PATH_PREFIX = "data/"
-    CAMERA_POS = ["left", "center", "right"]
-    CAMERA_TO_STEERING_ANGLE_ADJ = [0.25, 0, -0.25]
+    TRAIN_BATCH_SIZE = 64
 
     __logger = logging.getLogger(__name__)
 
@@ -129,44 +132,66 @@ class TrainData(Data):
         if not os.path.exists(data_file):
             raise "missing training_data file!"
 
+        self.debug = False
         self.__csv_data_file = data_file
-        self.__csv_data = None
+        self.__csv_train_data = None
+        self.__csv_valid_data = None
         super(TrainData, self).__init__()
+        self.__load_data()
 
     def test(self):
         logging.info("running selfdiag ...")
 
-        self.__load_data()
-        assert (self.data() != None)
+        assert (self.train_data() != None)
 
-        line_data = self.data()[51]
+        line_data = self.train_data()[51]
 
-        camera, image_file, steering_angle = self.__select_camera_at_random(line_data)
+        camera, image_file, steering_angle = self.__select_camera_at_random(line_data, select_camera_at_random=True)
         assert(camera != None)
         assert(image_file != None)
         assert(steering_angle != None)
+        assert(type(steering_angle) is float)
 
         logging.info("loading camera: %s image: %s steering_angle: %s ..." % (camera, image_file, steering_angle))
 
-        camera_image = self.__load_image(image_file)
-        assert (camera_image.shape[0] == 160)
-        assert (camera_image.shape[1] == 320)
-        assert (camera_image.shape[2] == 3)
+        camera_image = Data.load_image_from_file(image_file)
+        assert (camera_image.shape[0] == self.INPUT_IMAGE_HEIGHT)
+        assert (camera_image.shape[1] == self.INPUT_IMAGE_WIDTH)
+        assert (camera_image.shape[2] == self.INPUT_IMAGE_COLCHAN)
+        assert(camera_image.dtype == np.uint8)
 
         camera, camera_image, steering_angle = self.__select_image_for_training(line_data)
         logging.info("loading camera: %s image: %s steering_angle: %s ..." % (camera, image_file, steering_angle))
 
         assert (camera_image.shape[0] == self.INPUT_IMAGE_HEIGHT)
         assert (camera_image.shape[1] == self.INPUT_IMAGE_WIDTH)
-        assert (camera_image.shape[2] == 3)
+        assert (camera_image.shape[2] == self.INPUT_IMAGE_COLCHAN)
+        assert (camera_image.dtype == np.float32)
+        assert (type(steering_angle) is float)
 
-    def data(self):
-        return self.__csv_data
+    def train_data(self):
+        return self.__csv_train_data
 
-    def __select_image_for_training(self, line_data, generate_new_images=True):
-        camera, image_file, steering_angle = self.__select_camera_at_random(line_data)
-        image = self.__load_image(image_file)
-        image = self.pre_process(image)
+    def valid_data(self):
+        X = []
+        y = []
+        for line in self.__csv_valid_data:
+            camera, image, steering_angle = self.__select_image_for_training(line, generate_new_images=False, select_camera_at_random=False)
+            X.append(image)
+            y.append(steering_angle)
+
+        X = np.array(X)
+        y = np.array(y)
+
+        assert (X.shape[0] == y.shape[0]), "The number of images is not equal to the number of labels."
+        assert (X.shape[1:] == self.INPUT_IMAGE_SHAPE), "Unexpected input shape %s" % (X.shape[1:])
+
+        return X, y
+
+    def __select_image_for_training(self, line_data, generate_new_images=False, select_camera_at_random=False):
+        camera, image_file, steering_angle = self.__select_camera_at_random(line_data, select_camera_at_random)
+        image = Data.load_image_from_file(image_file)
+        image = Data.image_pre_process(image)
 
         if generate_new_images:
             # randomly flip along x/y axis ...
@@ -178,11 +203,11 @@ class TrainData(Data):
             # skew for training recovery ...
             image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle)
 
-        return camera, image, steering_angle
+        return camera, np.array(image), steering_angle
 
     def __x_y_skew_at_rand(self, image, steering_angle, both_axis=False):
-        x_range = image.shape[1] / 4
-        y_range = image.shape[0] / 4
+        x_range = image.shape[1] / 3
+        y_range = image.shape[0] / 3
         angle_multiplier = 0.5
 
         x_tran = x_range * np.random.uniform() - (x_range / 2)  # + or -
@@ -196,9 +221,6 @@ class TrainData(Data):
         new_image = cv2.warpAffine(image, translation_mat, (image.shape[1], image.shape[0]))
 
         logging.debug("x tran: %s y tran: %s steering adj: %s -> %s" % (x_tran, y_tran, steering_angle, new_steering_angle))
-        if self.debug:
-            self.display_image("X-Y skew", new_image)
-
         return new_image, new_steering_angle
 
     def __adj_brightness_at_rand(self, image):
@@ -219,21 +241,69 @@ class TrainData(Data):
         else:
             return image, steering_angle
 
-    def __select_camera_at_random(self, line_data):
-        selection_idx = np.random.randint(3)
+    def __select_camera_at_random(self, line_data, select_camera_at_random):
+        selection_idx = 0
+        if select_camera_at_random:
+            selection_idx = np.random.randint(3)
+
         camera_image = line_data[selection_idx]
         steering_angle = float(line_data[self.STEERING_ANGLE_IDX].strip()) + self.CAMERA_TO_STEERING_ANGLE_ADJ[selection_idx]
-        return self.CAMERA_POS[selection_idx], str(self.IMAGE_PATH_PREFIX + camera_image.strip()), steering_angle
 
-    def __load_image(self, file_path):
-        image = cv2.imread(file_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return image
+        return self.CAMERA_POS[selection_idx], str(self.IMAGE_PATH_PREFIX + camera_image.strip()), steering_angle
 
     def __load_data(self):
         # csv format: center,left,right,steering,throttle,brake,speed
         with open(self.__csv_data_file, newline='') as csvfile:
             csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-            self.__csv_data = list(csv_reader)[1:]
-            self.__logger.info("loaded data points: %s" % (len(self.__csv_data)))
+            csv_data = list(csv_reader)[1:]
+
+            # train vs. validation data 80:20 split
+            random.shuffle(csv_data)
+
+            row_count = len(csv_data)
+            self.__csv_train_data = csv_data[:int(row_count * 0.8)]
+            self.__csv_valid_data = csv_data[-int(row_count * 0.2):]
+
+            self.__logger.info("loaded training data points: %s" % (len(self.__csv_train_data)))
+            self.__logger.info("loaded validation data points: %s" % (len(self.__csv_valid_data)))
+
+    def fit_generator(self):
+        curr_iter_idx_start = 0
+        curr_iter_idx_end = self.TRAIN_BATCH_SIZE - 1
+        idx_max = len(self.__csv_train_data) - 1
+
+        if curr_iter_idx_end > idx_max:
+            curr_iter_idx_end = idx_max
+
+        while 1:
+            logging.debug("train batch %s-%s (tot: %s)" % (curr_iter_idx_start, curr_iter_idx_end, len(self.__csv_train_data)))
+            X = []
+            y = []
+
+            curr_iter_idx = curr_iter_idx_start
+
+            for idx in range(self.TRAIN_BATCH_SIZE):
+                line = self.__csv_train_data[curr_iter_idx]
+
+                camera, image, steering_angle = self.__select_image_for_training(line, generate_new_images=True, select_camera_at_random=True)
+                X.append(image)
+                y.append(steering_angle)
+
+                curr_iter_idx += 1
+                if curr_iter_idx >  curr_iter_idx_end:
+                    curr_iter_idx = curr_iter_idx_start
+
+            curr_iter_idx_start = curr_iter_idx_start + self.TRAIN_BATCH_SIZE
+            curr_iter_idx_end = curr_iter_idx_end + self.TRAIN_BATCH_SIZE
+
+            if curr_iter_idx_start > idx_max:
+                curr_iter_idx_start = 0
+                curr_iter_idx_end = self.TRAIN_BATCH_SIZE - 1
+
+            if curr_iter_idx_end > idx_max:
+                curr_iter_idx_end = idx_max
+
+            logging.debug("\t next: %s-%s (tot: %s)" % (curr_iter_idx_start, curr_iter_idx_end, len(self.__csv_train_data)))
+
+            yield np.array(X), np.array(y)
 

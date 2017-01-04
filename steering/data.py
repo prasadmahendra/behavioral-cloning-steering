@@ -10,7 +10,7 @@ from keras.applications import imagenet_utils
 
 class Data():
     INPUT_IMAGE_WIDTH = 80
-    INPUT_IMAGE_HEIGHT = 40
+    INPUT_IMAGE_HEIGHT = 80
     INPUT_IMAGE_COLCHAN = 3
     INPUT_IMAGE_SHAPE = (INPUT_IMAGE_HEIGHT, INPUT_IMAGE_WIDTH, INPUT_IMAGE_COLCHAN)
 
@@ -22,8 +22,8 @@ class Data():
     CAMERA_POS = ["center", "left", "right"]
     CAMERA_TO_STEERING_ANGLE_ADJ = [0, 0.25, -0.25]
 
-    def __init__(self):
-        self.debug = False
+    def __init__(self, config):
+        self.__config = config
 
     def image_pre_process(image):
         """Pre-processes images before they are fed in to the either the prediction or training model networks"""
@@ -39,7 +39,8 @@ class Data():
         return image_out
 
     def load_image_from_file(file_path):
-        image = np.asarray(load_img(file_path, target_size=(Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH)), dtype=np.uint8)
+        #image = np.asarray(load_img(file_path, target_size=(Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH)), dtype=np.uint8)
+        image = cv2.imread(file_path)
         image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
         return np.asarray(image, dtype=np.uint8)
 
@@ -83,13 +84,13 @@ class Data():
 
     def __pixel_normalize(image):
         image = cv2.normalize(image, image, alpha=0.0, beta=1.0, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-        #assert (math.isclose(np.min(image), 0.0, abs_tol=0.0001) and math.isclose(np.max(image), 1.0, abs_tol=0.0001)), "__normalize failed. The range of the input data is: %.10f to %.10f" % (np.min(image), np.max(image))
+        assert (math.isclose(np.min(image), 0.0, abs_tol=0.0001) and math.isclose(np.max(image), 1.0, abs_tol=0.0001)), "__normalize failed. The range of the input data is: %.10f to %.10f" % (np.min(image), np.max(image))
         return image
 
     def __pixel_mean_subtraction(image):
         image = image.astype(dtype='float32')
         image -= np.mean(image, dtype='float32', axis=0)
-        #assert (round(np.mean(image)) == 0), "__mean_subtraction error. The mean of the input data is: %f" % np.mean(image)
+        assert (round(np.mean(image)) == 0), "__mean_subtraction error. The mean of the input data is: %f" % np.mean(image)
         return image
 
     def __engine_compartment_pixels():
@@ -124,22 +125,23 @@ class Data():
         cv2.destroyAllWindows()
 
 class TrainData(Data):
-    TRAIN_BATCH_SIZE = 64
-
     __logger = logging.getLogger(__name__)
 
-    def __init__(self, data_file):
+    def __init__(self, config, data_file):
         if not os.path.exists(data_file):
             raise "missing training_data file!"
 
-        self.debug = False
         self.__csv_data_file = data_file
         self.__csv_train_data = None
         self.__csv_valid_data = None
-        super(TrainData, self).__init__()
+        super(TrainData, self).__init__(config)
+
+        self.__samples_per_epoch_multiplier = int(config.get("training", "samples_per_epoch_multiplier"))
+        self.__batch_size = int(config.get("training", "batch_size"))
+        self.__logger.info("training batch size: %s" % (self.__batch_size))
         self.__load_data()
 
-    def test(self):
+    def selfdiag(self):
         logging.info("running selfdiag ...")
 
         assert (self.train_data() != None)
@@ -172,6 +174,9 @@ class TrainData(Data):
     def train_data(self):
         return self.__csv_train_data
 
+    def samples_per_epoch(self):
+        return len(self.train_data()) * self.__samples_per_epoch_multiplier
+
     def valid_data(self):
         X = []
         y = []
@@ -201,16 +206,16 @@ class TrainData(Data):
             image = self.__adj_brightness_at_rand(image)
 
             # skew for training recovery ...
-            image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle, both_axis=True)
+            image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle, both_axis=False)
 
         return camera, np.array(image), steering_angle
 
     def __x_y_skew_at_rand(self, image, steering_angle, both_axis=False):
         adj = np.random.randint(2)
         if adj == 1:
-            x_range = image.shape[1] / 3
-            y_range = image.shape[0] / 5
-            angle_multiplier = 1.0
+            x_range = image.shape[1] / 4
+            y_range = image.shape[0] / 4
+            angle_multiplier = 0.3
 
             x_tran = x_range * np.random.uniform() - (x_range / 2)  # + or -
             new_steering_angle = steering_angle + (x_tran / x_range) * angle_multiplier
@@ -268,16 +273,18 @@ class TrainData(Data):
             self.__csv_train_data = csv_data[:int(row_count * 0.8)]
             self.__csv_valid_data = csv_data[-int(row_count * 0.2):]
 
-            self.__logger.info("loaded training data points: %s" % (len(self.__csv_train_data)))
+            self.__logger.info("loaded training data points: %s samples per epoch: %s" % (len(self.__csv_train_data), self.samples_per_epoch()))
             self.__logger.info("loaded validation data points: %s" % (len(self.__csv_valid_data)))
 
     def fit_generator(self):
         curr_iter_idx_start = 0
-        curr_iter_idx_end = self.TRAIN_BATCH_SIZE
+        curr_iter_idx_end = self.__batch_size
 
-        data_set_to_use = self.__csv_train_data
+        data_set_to_use = self.train_data()
         generate_new_images = True
         select_camera_at_random = True
+
+        logging.debug("generate additional images: %s all 3 camera angles: %s" % (generate_new_images, select_camera_at_random))
 
         idx_max = len(data_set_to_use) - 1
 
@@ -304,12 +311,12 @@ class TrainData(Data):
                 if curr_iter_idx >  curr_iter_idx_end:
                     curr_iter_idx = curr_iter_idx_start
 
-            curr_iter_idx_start = curr_iter_idx_start + self.TRAIN_BATCH_SIZE
-            curr_iter_idx_end = curr_iter_idx_end + self.TRAIN_BATCH_SIZE
+            curr_iter_idx_start = curr_iter_idx_start + self.__batch_size
+            curr_iter_idx_end = curr_iter_idx_end + self.__batch_size
 
             if curr_iter_idx_start >= idx_max:
                 curr_iter_idx_start = 0
-                curr_iter_idx_end = self.TRAIN_BATCH_SIZE
+                curr_iter_idx_end = self.__batch_size
 
             if curr_iter_idx_end >= idx_max:
                 curr_iter_idx_end = idx_max + 1

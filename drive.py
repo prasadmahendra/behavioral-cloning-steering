@@ -13,6 +13,7 @@ from flask import Flask, render_template
 from io import BytesIO
 from steering.data import Data
 from steering.nn.model import Model
+import configparser
 
 from keras.models import model_from_json
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array
@@ -43,8 +44,12 @@ def telemetry(sid, data):
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
     steering_angle = model.predict(image_array)
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
-    throttle = 0.2
-    print(steering_angle, throttle)
+    if float(speed) > 20.0:
+        throttle = 0.15
+    else:
+        throttle = 0.2
+
+    print(steering_angle, throttle, speed)
     send_control(steering_angle, throttle)
 
 
@@ -70,7 +75,11 @@ if __name__ == '__main__':
     #    model = model_from_json(jfile.read())
     #
     #model.compile("adam", "mse")
-    model = Model.for_predicting()
+
+    config = configparser.ConfigParser()
+    config.read("settings.ini")
+
+    model = Model.for_predicting(config)
 
     weights_file = args.model.replace('json', 'h5')
     model.restore(weights_file)

@@ -11,6 +11,7 @@ pillow
 h5py
 opencv-python
 keras
+matplotlib
 
 Install Python Dependencies with pip (pip install ...)
 keras
@@ -24,3 +25,6 @@ Once the model is up and running in drive.py, you should see the car move around
 
 Training:
 python steering.py -cmd train -dropout_prob 0.5 -epoch 25
+
+cp:
+scp -r -i ~/EDC/aws-tools/data/aws/tvs-qa-dev-staging.pem dnn-steering/*.py ubuntu@10.6.5.208:~/dnn-steering/; scp -r -i ~/EDC/aws-tools/data/aws/tvs-qa-dev-staging.pem dnn-steering/steering ubuntu@10.6.5.208:~/dnn-steering; scp -r -i ~/EDC/aws-tools/data/aws/tvs-qa-dev-staging.pem dnn-steering/*.ini ubuntu@10.6.5.208:~/dnn-steering;

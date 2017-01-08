@@ -24,23 +24,35 @@ class Model:
         self.__model = self.__create_model()
 
     def selfdiag(self):
+        """This function is used for testing and debugging purposes"""
+
         self.restore("./saved/model.h5")
 
     def for_training(config):
+        """Instantiates the model for running training epochs"""
+
         dropout_prob = float(config.get("training", "dropout_prob"))
         return Model(config, dropout_prob)
 
     def for_predicting(config):
+        """Instantiates the model for running predictions"""
+
         m = Model(config, dropout_prob=0.0)
         m.__model.compile("adam", "mse")
         return m
 
     def predict(self, image):
+        """Predicting a steering angle for a given single image"""
+
         image = Data.image_pre_process(image)
         image = np.expand_dims(image, axis=0)
         return self.__model.predict(image, batch_size=1, verbose=0)[0][0]
 
     def train(self, training_data, nb_epoch, checkpoint_path="./checkpoint"):
+        """Train and save (checkpoint) weights along the way at regular intervals.
+           ModelCheckPoint mode is set to 'auto' with a save_best_only value set to True.
+           This will save only weights that result in a min monitored value (val_loss)"""
+
         if not os.path.exists(checkpoint_path):
             os.makedirs(checkpoint_path)
 
@@ -74,6 +86,9 @@ class Model:
         logging.info("[Done] saving mode & weights to %s" % (saveto_model_path))
 
     def fit_generator(self, training_data, nb_epoch, checkpoint):
+        """Fits the model on data generated batch-by-batch by a Python generator. The generator is run in parallel to the model, for efficiency.
+           Parallism is determined by the nb_worker parameter which is set to the number of CPU cores avaialble on the training machine"""
+
         logging.info("Get validtion data ...")
         valid_images, valid_angles = training_data.valid_data()
 
@@ -84,18 +99,19 @@ class Model:
         self.__model.fit_generator(training_data.fit_generator(), validation_data=(valid_images, valid_angles), samples_per_epoch=training_data.samples_per_epoch(), nb_worker=workers, nb_epoch=nb_epoch, verbose=1, callbacks=[checkpoint], pickle_safe=True)
 
     def __create_model(self):
+        """Create a deep neural network model based on the type specified in the settings.ini file. This version only implements the
+           nvidia model and future impls may include others (eg: VGG16, ResNet50 etc."""
+
         model = self.__config.get("model", "type")
 
         if model == "nvidia":
             return self.__create_nvidia_model()
         elif model == "vgg16":
             return self.__create_vgg16_model()
+        elif model == "resnet50":
+            return self.__create_resnet50_model()
         else:
             raise "unknown model %s" % (model)
-
-    def __create_vgg16_model(self):
-        # TODO
-        raise "vgg16_model not implemented"
 
     def __create_nvidia_model(self):
         """This mode is based on NVIDIAs research paper - End to End Learning for Self-Driving Cars
@@ -132,6 +148,14 @@ class Model:
 
         logging.info("Model created (self.__dropout_prob: %s)" % (self.__dropout_prob))
         return model
+
+    def __create_vgg16_model(self):
+        """VGG16 model for future experiments. Not implemented."""
+        raise "vgg16_model not implemented"
+
+    def __create_resnet50_model(self):
+        """ResNet50 model for future experiments. Not implemented."""
+        raise "ResNet50_model not implemented"
 
     def __layer_init(self):
         """Init keras layers (https://keras.io/initializations/)"""

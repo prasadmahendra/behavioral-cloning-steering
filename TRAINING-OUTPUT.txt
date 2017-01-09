@@ -1,0 +1,85 @@
+root@ip-10-6-5-208:/home/ubuntu/dnn-steering# python steering.py -cmd train -epoch 25
+Using TensorFlow backend.
+I tensorflow/stream_executor/dso_loader.cc:128] successfully opened CUDA library libcublas.so locally
+I tensorflow/stream_executor/dso_loader.cc:128] successfully opened CUDA library libcudnn.so locally
+I tensorflow/stream_executor/dso_loader.cc:128] successfully opened CUDA library libcufft.so locally
+I tensorflow/stream_executor/dso_loader.cc:128] successfully opened CUDA library libcuda.so.1 locally
+I tensorflow/stream_executor/dso_loader.cc:128] successfully opened CUDA library libcurand.so locally
+2017-01-04 22:54:16,505 Running cmd: train
+2017-01-04 22:54:16,505 training batch size: 256
+2017-01-04 22:54:16,531 loaded training data points: 8036 samples per epoch: 32144
+2017-01-04 22:54:16,531 loaded validation data points: 8036
+2017-01-04 22:54:16,735 Model created (self.__dropout_prob: 0.0)
+2017-01-04 22:54:16,735 restore previously saved weights ...
+2017-01-04 22:54:16,735 saved weights (./saved/model.h5) not found
+2017-01-04 22:54:16,735 Get validtion data ...
+2017-01-04 22:54:16,735 loading validation data ...
+2017-01-04 22:54:41,998 Set fit generator. workers = 4 optimizer: adam
+2017-01-04 22:54:42,873 generate additional images: True all 3 camera angles: True
+2017-01-04 22:54:42,886 generate additional images: True all 3 camera angles: True
+2017-01-04 22:54:42,899 generate additional images: True all 3 camera angles: True
+Epoch 1/25
+2017-01-04 22:54:42,919 generate additional images: True all 3 camera angles: True
+I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:937] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:885] Found device 0 with properties:
+name: Tesla K80
+major: 3 minor: 7 memoryClockRate (GHz) 0.8235
+pciBusID 0000:00:1e.0
+Total memory: 11.17GiB
+Free memory: 11.05GiB
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:906] DMA: 0
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:916] 0:   Y
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:975] Creating TensorFlow device (/gpu:0) -> (device: 0, name: Tesla K80, pci bus id: 0000:00:1e.0)
+32044/32144 [============================>.] - ETA: 0s - loss: 0.0813/usr/local/lib/python3.5/dist-packages/keras/engine/training.py:1527: UserWarning: Epoch comprised more than `samples_per_epoch` samples, which might affect learning results. Set `samples_per_epoch` correctly to avoid this warning.
+  warnings.warn('Epoch comprised more than '
+32300/32144 [==============================] - 42s - loss: 0.0810 - val_loss: 0.0162
+Epoch 2/25
+32144/32144 [==============================] - 38s - loss: 0.0441 - val_loss: 0.0164
+Epoch 3/25
+32144/32144 [==============================] - 38s - loss: 0.0400 - val_loss: 0.0164
+Epoch 4/25
+32144/32144 [==============================] - 38s - loss: 0.0360 - val_loss: 0.0167
+Epoch 5/25
+32300/32144 [==============================] - 39s - loss: 0.0320 - val_loss: 0.0217
+Epoch 6/25
+32144/32144 [==============================] - 38s - loss: 0.0312 - val_loss: 0.0191
+Epoch 7/25
+32144/32144 [==============================] - 38s - loss: 0.0297 - val_loss: 0.0174
+Epoch 8/25
+32144/32144 [==============================] - 38s - loss: 0.0289 - val_loss: 0.0208
+Epoch 9/25
+32144/32144 [==============================] - 38s - loss: 0.0280 - val_loss: 0.0163
+Epoch 10/25
+32144/32144 [==============================] - 38s - loss: 0.0268 - val_loss: 0.0246
+Epoch 11/25
+32144/32144 [==============================] - 38s - loss: 0.0267 - val_loss: 0.0178
+Epoch 12/25
+32144/32144 [==============================] - 38s - loss: 0.0259 - val_loss: 0.0164
+Epoch 13/25
+32144/32144 [==============================] - 38s - loss: 0.0253 - val_loss: 0.0192
+Epoch 14/25
+32144/32144 [==============================] - 38s - loss: 0.0248 - val_loss: 0.0167
+Epoch 15/25
+32144/32144 [==============================] - 38s - loss: 0.0245 - val_loss: 0.0204
+Epoch 16/25
+32144/32144 [==============================] - 38s - loss: 0.0246 - val_loss: 0.0155
+Epoch 17/25
+32144/32144 [==============================] - 38s - loss: 0.0242 - val_loss: 0.0188
+Epoch 18/25
+32144/32144 [==============================] - 38s - loss: 0.0236 - val_loss: 0.0160
+Epoch 19/25
+32144/32144 [==============================] - 38s - loss: 0.0236 - val_loss: 0.0179
+Epoch 20/25
+32144/32144 [==============================] - 38s - loss: 0.0235 - val_loss: 0.0138
+Epoch 21/25
+32144/32144 [==============================] - 38s - loss: 0.0231 - val_loss: 0.0170
+Epoch 22/25
+32144/32144 [==============================] - 38s - loss: 0.0231 - val_loss: 0.0178
+Epoch 23/25
+32244/32144 [==============================] - 38s - loss: 0.0240 - val_loss: 0.0210
+Epoch 24/25
+32144/32144 [==============================] - 38s - loss: 0.0225 - val_loss: 0.0166
+Epoch 25/25
+32300/32144 [==============================] - 38s - loss: 0.0222 - val_loss: 0.0202
+2017-01-04 23:10:51,620 saving mode & weights to ./saved
+2017-01-04 23:10:51,665 [Done] saving mode & weights to ./saved

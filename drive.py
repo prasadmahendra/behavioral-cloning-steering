@@ -12,7 +12,7 @@ from PIL import ImageOps
 from flask import Flask, render_template
 from io import BytesIO
 from steering.data import Data
-from steering.nn.model import Model
+from steering.model import Model
 import configparser
 
 from keras.models import model_from_json

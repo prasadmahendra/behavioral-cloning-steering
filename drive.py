@@ -27,6 +27,7 @@ sio = socketio.Server()
 app = Flask(__name__)
 model = None
 prev_image_array = None
+maxspeed = 15.0
 
 @sio.on('telemetry')
 def telemetry(sid, data):
@@ -46,12 +47,12 @@ def telemetry(sid, data):
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
     if float(speed) < 1.0:
         throttle = 1.0
-    elif float(speed) < 10.0:
+    elif float(speed) < (maxspeed * .75):
         throttle = 0.6
-    elif float(speed) < 20.0:
+    elif float(speed) < maxspeed:
         throttle = 0.2
     else:
-        throttle = 0.15
+        throttle = 0.1
 
     print(steering_angle, throttle, speed)
     send_control(steering_angle, throttle)
@@ -73,6 +74,7 @@ def send_control(steering_angle, throttle):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Remote Driving')
     parser.add_argument('model', type=str, help='Path to model definition json. Model weights should be on the same path.')
+    #parser.add_argument('maxspeed', type=float, default=15, help='max speed of the car')
     args = parser.parse_args()
 
     #with open(args.model, 'r') as jfile:
@@ -85,8 +87,11 @@ if __name__ == '__main__':
 
     model = Model.for_predicting(config)
 
+    #maxspeed = args.maxspeed
     weights_file = args.model.replace('json', 'h5')
     model.restore(weights_file)
+
+    print("loading %s. max speed: %s")
 
     # wrap Flask application with engineio's middleware
     app = socketio.Middleware(sio, app)

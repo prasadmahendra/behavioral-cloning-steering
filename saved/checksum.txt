@@ -1,0 +1,2 @@
+MD5 (dnn-steering/saved/model.h5) = 171b0eaa26db591c3f966082796a3b01
+MD5 (dnn-steering/saved/model.json) = 2006b879b84136ceff1c06db0ec4aafd

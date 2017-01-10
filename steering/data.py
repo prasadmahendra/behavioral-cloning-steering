@@ -38,7 +38,7 @@ class Data():
 
         image_out = Data.__pixel_normalize(image_out)
 
-        #image_out = Data.__pixel_mean_subtraction(image_out)
+        image_out = Data.__pixel_mean_subtraction(image_out)
 
         image_out = Data.__resize_image(image_out, Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH)
 
@@ -148,7 +148,7 @@ class TrainData(Data):
         self.__load_data()
 
     def selfdiag(self):
-        logging.info("running selfdiag ...")
+        logging.info("running traindata selfdiag ...")
 
         assert (self.train_data() != None)
 
@@ -168,7 +168,7 @@ class TrainData(Data):
         assert (camera_image.shape[2] == self.ORIG_IMAGE_COLCHAN)
         assert(camera_image.dtype == np.float32)
 
-        camera, camera_image, steering_angle = self.__select_image_for_training(line_data)
+        camera, camera_image, steering_angle = self.__select_image_for_training(line_data, generate_new_images=True, select_camera_at_random=True)
         logging.info("loading camera: %s image: %s steering_angle: %s ..." % (camera, image_file, steering_angle))
 
         assert (camera_image.shape[0] == self.INPUT_IMAGE_HEIGHT)
@@ -230,8 +230,11 @@ class TrainData(Data):
             # adj brightness ...
             image = self.__adj_brightness_at_rand(image)
 
+            # add shadows at random ...
+            image = self.__add_shadow(image)
+
             # skew for training recovery ...
-            image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle, both_axis=True)
+            image, steering_angle = self.__x_y_skew_at_rand(image, steering_angle, both_axis=False)
 
         assert (steering_angle <= 1.0)
         assert (steering_angle >= -1.0)
@@ -243,12 +246,11 @@ class TrainData(Data):
 
         adj = np.random.randint(2)
         if adj == 1:
-            x_range = image.shape[1] / 3
+            x_range = image.shape[1] / 2
             y_range = image.shape[0] / 5
-            angle_multiplier = 0.5
 
             x_tran = x_range * np.random.uniform() - (x_range / 2)  # + or -
-            angle_adjust = (x_tran / x_range) * angle_multiplier
+            angle_adjust = (x_tran / (x_range / 2)) * 0.5
             new_steering_angle = steering_angle + angle_adjust
 
             if new_steering_angle > 1.0:
@@ -281,6 +283,10 @@ class TrainData(Data):
             return image
         else:
             return image
+
+    def __add_shadow(self, image):
+        # TODO
+        return image
 
     def __flip_image_lr_at_rand(self, image, steering_angle):
         """flip the image left-to-right at random. When flipped also flip the steering angle."""
@@ -330,8 +336,8 @@ class TrainData(Data):
             self.__logger.info("loaded validation data points: %s" % (len(self.__csv_valid_data)))
 
     def fit_generator(self):
-        generate_new_images = bool(self.__config.get("training", "generate_new_images"))
-        select_camera_at_random = bool(self.__config.get("training", "select_camera_at_random"))
+        generate_new_images = self.__config.getboolean("training", "generate_new_images")
+        select_camera_at_random = self.__config.getboolean("training", "select_camera_at_random")
 
         curr_iter_idx_start = 0
         curr_iter_idx_end = self.__batch_size

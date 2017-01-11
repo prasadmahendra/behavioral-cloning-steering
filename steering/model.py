@@ -119,15 +119,15 @@ class Model:
 
         model = Sequential()
         #model.add(Convolution2D(3, 1, 1, init=self.__layer_init, subsample=(1, 1), border_mode='valid', name='conv0_1x1', input_shape=self.__input_img_shape, activation=activation))
-        model.add(Convolution2D(24, 5, 5, init=self.__layer_init(), subsample=(2, 2), border_mode='valid', name='conv1_2x2', input_shape=self.__input_img_shape))
+        model.add(Convolution2D(24, 5, 5, init=self.__layer_init(), subsample=(2, 2), border_mode='valid', name='conv1_5x5', input_shape=self.__input_img_shape))
         model.add(ELU())
-        model.add(Convolution2D(36, 5, 5, init=self.__layer_init(), subsample=(2, 2), border_mode='valid', name='conv2_2x2'))
+        model.add(Convolution2D(36, 5, 5, init=self.__layer_init(), subsample=(2, 2), border_mode='valid', name='conv2_5x5'))
         model.add(ELU())
-        model.add(Convolution2D(48, 5, 5, init=self.__layer_init(), subsample=(2, 2), border_mode='valid', name='conv3_2x2'))
+        model.add(Convolution2D(48, 5, 5, init=self.__layer_init(), subsample=(2, 2), border_mode='valid', name='conv3_5x5'))
         model.add(ELU())
-        model.add(Convolution2D(64, 3, 3, init=self.__layer_init(), subsample=(1, 1), border_mode='valid', name='conv4_1x1'))
+        model.add(Convolution2D(64, 3, 3, init=self.__layer_init(), subsample=(1, 1), border_mode='valid', name='conv4_3x3'))
         model.add(ELU())
-        model.add(Convolution2D(64, 3, 3, init=self.__layer_init(), subsample=(1, 1), border_mode='valid', name='conv5_1x1'))
+        model.add(Convolution2D(64, 3, 3, init=self.__layer_init(), subsample=(1, 1), border_mode='valid', name='conv5_3x3'))
         model.add(ELU())
         model.add(Flatten())
         model.add(Dense(1164, init=self.__layer_init(), name="dense0_1164"))
@@ -143,10 +143,11 @@ class Model:
         model.add(ELU())
         model.add(Dense(1, init=self.__layer_init(), name="dense4_1"))
 
-        assert (model.get_layer(name="conv1_2x2").input_shape == (None, Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH, Data.INPUT_IMAGE_COLCHAN)), "The input shape is: %s" % str(model.get_layer(name="hidden1").input_shape)
+        assert (model.get_layer(name="conv1_5x5").input_shape == (None, Data.INPUT_IMAGE_HEIGHT, Data.INPUT_IMAGE_WIDTH, Data.INPUT_IMAGE_COLCHAN)), "The input shape is: %s" % str(model.get_layer(name="hidden1").input_shape)
         assert (model.get_layer(name="dense4_1").output_shape == (None, 1)), "The input shape is: %s" % str(model.get_layer(name="hidden1").input_shape)
 
         logging.info("Model created (self.__dropout_prob: %s)" % (self.__dropout_prob))
+        model.summary()
         return model
 
     def __create_vgg16_model(self):

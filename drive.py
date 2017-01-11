@@ -91,7 +91,7 @@ if __name__ == '__main__':
     weights_file = args.model.replace('json', 'h5')
     model.restore(weights_file)
 
-    print("loading %s. max speed: %s")
+    print("loading %s. max speed: %s" % (weights_file, maxspeed))
 
     # wrap Flask application with engineio's middleware
     app = socketio.Middleware(sio, app)

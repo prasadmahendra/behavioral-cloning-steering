@@ -57,7 +57,7 @@ class Model:
             os.makedirs(checkpoint_path)
 
         checkpoint_path = "%s/weights.{epoch:02d}-{val_loss:.4f}.h5" % (checkpoint_path)
-        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, save_best_only=True, save_weights_only=False, monitor='val_loss', mode='auto')
+        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, save_best_only=False, save_weights_only=False, monitor='val_loss', mode='auto')
         self.fit_generator(training_data, nb_epoch, checkpoint)
 
     def restore(self, saved_model_path):

@@ -66,21 +66,28 @@ Example of the command line client with arguments to start or continue training:
 python steering.py -cmd train -data ./data/set1/driving_log.csv -epoch 5 -loadsaved True
 ```
 
-**Autonomous mode results: Track 1**
+**Autonomous mode results: Track 1 & 2**
 
 The model was trained for about 15 epochs in total, 5 epochs at a time at most. After each training excercise the resulting weights was tested in the simulator and the decision to continue training or augment various hyper params was based on the observed results. Transfer learning aspect of the constructed model allows us to re-use a previously saved model weights to short circuit our total learning time. Training speeds on p2.xlarge instances were remarkably fast (~60 seconds to process 50,000 images) compared to a current generation high end macbook pro.
 
-Using dropout values > 0.0 did not appear to significantly improve results on Track 1. So dropout value is left at 0.0. That said, no significant amount of time was spent testing on track 2 to determine if overfitting may be an issue in generalized driving conditions/road tracks. Its is also notable that the nvidia research paper does not mention the use of dropout layers and just simple regularization techniques alone appear sufficient for this network architecture and data sets.
+Using dropout values > 0.0 did not appear to significantly improve results on Track 1. So dropout value is left at 0.0. Its is also notable that the nvidia research paper does not mention the use of dropout layers and just simple regularization techniques alone appear sufficient for this network architecture and data sets.
 
-The resulting trained network is able to successfully navigate track 1 repeatedly! However there are a couple of obvious problems noticeable during driving (as visible in the video below).
+The resulting trained network is able to successfully navigate track 1 repeatedly (in Good quality graphics setting) and the car navigates Track 2 successfully even though the model wasn't trained on this track at all but only at lower quality (fastest) graphics settings that avoids shadows. Problems noticeable during driving (as visible in the videos linked below):
 
-> 1. Areas where there are patches of shadows casted on the road cause the network to make minor steering adjustments. While these adjustments are only minor they are not ideal.
-> 2. There is one area right before the bridge section where the car drives right on top of the lane boundary line on the left. The network corrects this pretty quickly and recovers but this is less than ideal and very unnerving to a human passenger on board.
+> 1. Areas where there are patches of shadows casted on the road cause the network to make minor steering adjustments. While these adjustments are only minor they are not ideal. Shadows are particularly a problem on track 2 using "Good" quality graphics settings (Car navigates Track 2 successfully on lower quality graphics settings with no shadows rendered).
+> 2. There is one area right before the bridge section in Track 1 where the car drives right on top of the lane boundary line on the left. The network corrects this pretty quickly and recovers but this is less than ideal and very unnerving to a human passenger on board.
 > 3. Speed/Throttle were hard coded in autonomous mode. This is again is not ideal and ideally the network should take in to consideration (take as input) the current speed of the vehicle. Speed relative to sampling rate has an impact on how much (steep) the steering angle should be in situations where corrections are necessary. This speed vs. steering angle issue is particularly noticeable navigating track 2 where there are lots of up/downhill sections.
 
 See the section on *further Improvements* below on some possible ways to fix these two issues we've noticed.
 
-[![IMAGE ALT TEXT](http://img.youtube.com/vi/JUMQfi0A3hw/0.jpg)](http://www.youtube.com/watch?v=JUMQfi0A3hw "Track 1 Autonomous mode Results")
+Track 1
+
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/0-5QSHPL6yg/0.jpg)](http://www.youtube.com/watch?v=0-5QSHPL6yg "Track 1 Autonomous mode Results")
+
+Track 2
+
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/1gzcvoJ_iOg/0.jpg)](http://www.youtube.com/watch?v=1gzcvoJ_iOg "Track 1 Autonomous mode Results")
+
 
 **Further improvements**
 
@@ -159,3 +166,6 @@ dropout_prob: 0.0
 
 [4] [Agile training simulator](https://github.com/diyjac/AgileTrainer)
 
+[5] All the awesome udacity student peers!
+
+    

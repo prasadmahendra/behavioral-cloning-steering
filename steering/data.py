@@ -246,7 +246,7 @@ class TrainData(Data):
 
         adj = np.random.randint(2)
         if adj == 1:
-            x_range = image.shape[1] / 2
+            x_range = image.shape[1] / 3
             y_range = image.shape[0] / 5
 
             x_tran = x_range * np.random.uniform() - (x_range / 2)  # + or -

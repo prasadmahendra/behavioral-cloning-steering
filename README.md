@@ -2,6 +2,23 @@
 
 This project implements a convolutional neural network (CNN) that takes a front facing camera images as input and outputs a steering command (angles). The CNN was tested and trained in a simulator environment. The simulator [1] was created by Udacity using the Unity engine that uses real game physics to create an approximation to real driving conditions. The CNN implemented is a model described by Nvidia in a research paper published April 2016 [2].
 
+**Project Folder Structure**
+
+```
+├── steering.py             # Command line tool for training & predictions
+├── steering
+│   ├──  data.py            # Training data (encapsulates image preprocessing  pipeline)
+│   ├──  model.py          # Neural network model
+├── settings.ini            # model settings file
+├── drive.py                # drive server for predicting steering angles
+├── data                    # training data sets
+│   ├──  set1
+├── saved                  # saved model and weights
+│   ├──  model.json        # saved model
+│   ├──  model.h5          # saved weights
+| README.md                 # this file!
+```
+
 **CNN Architecture**
 
 The model described by nvidia [2] uses a sequence of 5 convolutional layers followed by a sequence 4 fully connected (dense) layers with ELU layers in between for activation. ELU as opposed to regular RELU activation fires -1 for values less than 0 helping the network learn faster [3]. Additionally we introduce dropout layers in the fully connected portion of the network to run experiements to see if dropouts parameter may be an option in addressing overfitting concerns. The input to the network is an image of shape (66, 200, 3) and the output of the network is a normalized steering angle value between 0.0 and 1.0 that the Udacity simular understands how to interpret (de-normalize).
@@ -102,22 +119,6 @@ Track 2 autonomous mode:
 
 These 3 improvements require some additional work to augment the image processing pipeline and implement the agile training simulator described in [4].
 
-**Project Folder Structure**
-
-```
-├── steering.py             # Command line tool for training & predictions
-├── steering
-│   ├──  data.py            # Training data (encapsulates image preprocessing  pipeline)
-│   ├──  model.py          # Neural network model
-├── settings.ini            # model settings file
-├── drive.py                # drive server for predicting steering angles
-├── data                    # training data sets
-│   ├──  set1
-├── saved                  # saved model and weights
-│   ├──  model.json        # saved model
-│   ├──  model.h5          # saved weights
-```
-
 **Steering .py command line usage**
 
 ```
@@ -173,3 +174,4 @@ dropout_prob: 0.0
 
 [5] All the awesome udacity student peers!
 
+    

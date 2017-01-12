@@ -1,0 +1,8 @@
+numpy
+flask-socketio
+eventlet
+pillow
+h5py
+opencv-python
+keras
+matplotlib

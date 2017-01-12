@@ -80,11 +80,16 @@ The resulting trained network is able to successfully navigate track 1 repeatedl
 
 See the section on *further Improvements* below on some possible ways to fix these two issues we've noticed.
 
-Track 1
+Running the predictions server:
+```
+python drive.py ./saved/model.json
+```
+
+Track 1 autonomous mode:
 
 [![IMAGE ALT TEXT](http://img.youtube.com/vi/0-5QSHPL6yg/0.jpg)](http://www.youtube.com/watch?v=0-5QSHPL6yg "Track 1 Autonomous mode Results")
 
-Track 2
+Track 2 autonomous mode:
 
 [![IMAGE ALT TEXT](http://img.youtube.com/vi/1gzcvoJ_iOg/0.jpg)](http://www.youtube.com/watch?v=1gzcvoJ_iOg "Track 1 Autonomous mode Results")
 

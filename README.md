@@ -50,11 +50,11 @@ Data collection can be extermely tedious using the available simulator and the d
 
 The data set available for training was augmented to produce additional images and steering commands as follows:
 
-> 1. Select a camera angle at random (and adjust the steering angle of the center camera for left and right camera views). This was done at random with a 1/3 chance of each camera being picked for every image selected for a training batch. For the left and right cameras we add a +0.3 and -0.3 angles to the center camera steering angle value.
-> 2. Flip the images left to right (and invert the steering angles when we do so). This was done at random with a 50:50 chance of being flipped for every image selected for a training batch.
+> 1. Select a camera angle at random (and adjust the steering angle of the center camera for left and right camera views). This was done at random with a 1/3 chance of each camera being picked for every image selected for a training batch. For the left and right cameras we add a +0.3 and -0.3 angles (values empirically determined) to the center camera steering angle value.
+> 2. Flip the images left to right (and invert the steering angle when we do so). This was done at random with a 50:50 chance of being flipped for every image selected for a given training batch.
 > 3. Adjust brightness (+/-) of the image by a small value with 50:50 odds of the brightness value being adjusted vs. the original source brightness being picked. Adjusting brightness will teach the model to ignore shadows and various lighting conditions.
-> 4. Shift the image left-right and/or top/bottom by a number of pixels to simulate the effect of the car being off center and driving up or down hill. Adjust the steering angle as a % of the pixels shifted horizontally. The steering angle value used here was empirically determined by testing on track #1.
->5. Furthermore, more we split the data in to a training and validation set and we made this a configurable parameter under settings.ini. We also made the number of samples per epoch configurable given that our augmentation process randomly selects and modifies images. This has the effect of producing a larger regularized dataset per epoch minimizing overfitting conerns.
+> 4. Shift the image left-right and/or top/bottom by a number of pixels to simulate the effect of the car being off center and driving up or down hill. Adjust the steering angle as a % of the pixels shifted horizontally. The steering angle value used here was empirically determined by testing on track #1. This augmentation helps the model learn recovery.
+>5. Furthermore, we split the data in to a training and validation set and we made this a configurable parameter under settings.ini. We also made the number of samples per epoch configurable given that our augmentation process randomly selects and modifies images. This has the effect of producing a larger regularized dataset per epoch with minimal overfitting conerns given the randomness of augmentation for every image selected from the input set.
 
 settings.ini
 ```

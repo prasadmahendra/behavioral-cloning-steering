@@ -168,4 +168,3 @@ dropout_prob: 0.0
 
 [5] All the awesome udacity student peers!
 
-    

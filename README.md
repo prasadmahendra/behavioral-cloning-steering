@@ -172,6 +172,7 @@ dropout_prob: 0.0
 
 [4] [Agile training simulator](https://github.com/diyjac/AgileTrainer)
 
-[5] All the awesome udacity student peers!
+[5] [Visual Geometry Group - Oxford University](http://www.robots.ox.ac.uk/~vgg/research/very_deep/)
 
-    
+[6] [ResNet - Microsoft’s Residual Networks](http://blogs.microsoft.com/next/2015/12/10/microsoft-researchers-win-imagenet-computer-vision-challenge/)
+
